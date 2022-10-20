@@ -16,13 +16,17 @@ using namespace std;
 *  inicjalizacja
 */
      Ustawienia ust;
-     ust.read();
-     ust.wypisz();
+     if(ust.read() == 0){
+		ust.wypisz();
+	 }
+	 else{
+		cout << "Wyjście z programu z powodu bledu wczytania pliku z ustawieniami." << endl;
+		cout << "Upewnij sie, ze plik z ustawieniami ustawienia.cfg jest poprawny." << endl;
+		return -1;
+	 }
+		
 	 okres = ust.get_okres();
 	 okres_temp = 0;
-	 adres_maila = "abraham@slcj.uw.edu.pl";
-	 temat_maila = "test wysylania maila przez program";
-	 tekst_maila = "test";
 	 bool running = 1; //warunek dzialania glownej petli
 	 bool zalewaj = 0; //warunek zalewania
 	 time_t rawtime;
@@ -67,9 +71,9 @@ using namespace std;
 		 
 		 if(czas->tm_sec == 0){
 			  cout << "Automat zbiornika posredniego - czuwam: " << ctime(&rawtime) << endl;
-			  cout << "Chlodzenie rurociagu zaplanowane na godzine: " << ust.get_czas_chlodzenia_rur().godz << ":" << ust.get_czas_chlodzenia_rur().min << endl;
-	          cout << "Zalewanie zaplanowane na godzine: " << ust.get_czas_zal().godz << ":" << ust.get_czas_zal().min << endl;
-	          cout << "do czasu zalewania dodaj " << okres_temp << " x 24h" << endl << endl;
+			  printf("Chlodzenie rurociagu zaplanowane na godzine: %02d:%02d \n", ust.get_czas_chlodzenia_rur().godz, ust.get_czas_chlodzenia_rur().min);
+			  printf("Zalewanie zaplanowane na godzine: %02d:%02d \n", ust.get_czas_zal().godz, ust.get_czas_zal().min);
+			  cout << "do czasu zalewania dodaj " << okres_temp << " x 24h" << endl << endl;
 		 } 
 		 if(czas->tm_min == 0 && (czas->tm_sec == 0)){
 			  zapiszLog("czuwam");
@@ -203,14 +207,21 @@ int zalewanie(Ustawienia ust,Wire zawor_rur, Wire dolotowy_zawor, Wire wylotowy_
 	zapiszLog(string("Zawor dolotowy: ") += dolotowy_zawor.statusTxt());
 	zapiszLog(string("Zawor wylotowy: ") += wylotowy_zawor.statusTxt());
 	int min_chlodzenia =0;
-	if(ust.get_czas_chlodzenia_rur().godz < ust.get_czas_zal().godz){
+	if(ust.get_czas_chlodzenia_rur().godz <= ust.get_czas_zal().godz){
 		min_chlodzenia = ((ust.get_czas_zal().godz - ust.get_czas_chlodzenia_rur().godz) * 60);
+		min_chlodzenia += ((ust.get_czas_zal().min - ust.get_czas_chlodzenia_rur().min));
+		if(min_chlodzenia > 0){
+			if(min_chlodzenia > 60){
+				cout << "Czas chlodzenia rurociagu przekracza 60 minut." << endl;
+				cout << "Ustawiam czas domyslny - 60 minut" << endl;
+				zapiszLog("Ustawiony czas chlodzenia przekracza 60 min, chlodzenie bedzie trwalo 60 min");
+				min_chlodzenia = 60;
+			}
+			cout << "Rozpoczynam chlodzenie rurociagu, ktore potrwa " << min_chlodzenia << " minut." << endl;
+			zapiszLog(string("Chlodzenie rurociagu potrwa [minuty]: ") += to_string(min_chlodzenia));
+			sleep(min_chlodzenia * 60);
+		}
 	}
-	min_chlodzenia += ((ust.get_czas_zal().min - ust.get_czas_chlodzenia_rur().min));
-	if(min_chlodzenia > 0){
-		sleep(min_chlodzenia * 60);
-	}
-		
 	cout << "Zawor dolotowy: ";
 	//dolotowy_zawor.set("ON"); // w tej konfiguracji musi byc wylaczony zeby sie napelnialo
 	dolotowy_zawor.printStatus();
@@ -344,7 +355,7 @@ Ustawienia::Ustawienia(void){
 	czas_zal.godz = 12;
 	czas_zal.min = 20;
 	okres = 0;
-	prog_przelewu = -190;
+	prog_przelewu = -185;
 	czas_chlodzenia_rur.godz = 12;
 	czas_chlodzenia_rur.min = 0;
 	min_dobijania = 5;
@@ -366,7 +377,6 @@ string Ustawienia::get_adres_email(int nr){
 	}
 	return this->adres_email[nr]; 
 };
-
 
 int Ustawienia::set_czas_zal(Godzina czas){
 	this->czas_zal = czas;
